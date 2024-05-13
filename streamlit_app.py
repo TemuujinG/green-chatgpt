@@ -21,14 +21,14 @@ from langchain_openai import OpenAIEmbeddings
 from pathlib import Path
 
 print("Started")
-st.set_page_config(page_title='Your Enterprise Sidekick', page_icon='🚀')
+st.set_page_config(page_title='Green loan l geneshvv', page_icon='☘')
 st.markdown("""
     <style>
         .reportview-container {
             margin-top: -2em;
         }
         #MainMenu {visibility: hidden;}
-        .stDeployButton {display:none;}
+        .stDeployButton {display:show;}
         footer {visibility: hidden;}
         #stDecoration {display:none;}
     </style>
