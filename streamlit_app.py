@@ -22,15 +22,54 @@ from pathlib import Path
 
 print("Started")
 st.set_page_config(page_title='Green loan l geneshvv', page_icon='☘')
-st.markdown("""
+
+st.markdown(f"""
     <style>
-        .reportview-container {
+    div[data-testid="stToolbar"] {{
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }}
+                div[data-testid="stDecoration"] {{
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }}
+                div[data-testid="stStatusWidget"] {{
+                visibility: hidden;
+                height: 0%;
+                position: fixed;
+                }}
+                #MainMenu {{
+                visibility: hidden;
+                height: 0%;
+                }}
+                header {{
+                visibility: hidden;
+                height: 0%;
+                }}
+                footer {{
+                visibility: hidden;
+                height: 0%;
+                }}
+    [data-testid="stApp"]  > div {{
+          background: url(data:image/png;base64,{base64.b64encode(open('.assets/chatbot.png', "rb").read()).decode()});
+            background-repeat: no-repeat;
+            background-size: cover;
+      }}
+      [data-testid="stBottom"]  > div {{
+          background: url(data:image/png;base64,{base64.b64encode(open('.assets/chatbot.png', "rb").read()).decode()});
+            background-size: 0;
+      }}
+      [data-testid="stHeader"] > {{display:none; margin:-2em}}
+        .reportview-container {{
             margin-top: -2em;
-        }
-        #MainMenu {visibility: hidden;}
-        .stDeployButton {display:none;}
-        footer {visibility: hidden;}
-        #stDecoration {display:none;}
+        }}
+        #MainMenu {{visibility: hidden;}}
+        .stDeployButton {{display:none;}}
+        footer {{visibility: hidden;}}
+        header {{display: none;}}
+        #stDecoration {{display:none;}}
     </style>
 """, unsafe_allow_html=True)
 # Get a unique session id for memory
@@ -67,6 +106,7 @@ global disable_vector_store
 global strategy
 global prompt_type
 global custom_prompt
+global top_k_vectorstore
 
 
 #################
@@ -182,7 +222,7 @@ Use the following chat history to answer the question:
 Question:
 {{question}}
 
-Answer in {language}:"""
+Answer in Mongolian:"""
 
     if type == 'Custom':
         print("Prompt type: Custom")
@@ -356,109 +396,47 @@ def load_chat_history(username):
     )
 
 
-#####################
-### Session state ###
-#####################
-
 # Start with empty messages, stored in session state
 if 'messages' not in st.session_state:
-    st.session_state.messages = [AIMessage(content='hi lalraa')]
+    st.session_state.messages = [AIMessage(content='Сайн байна уу? танд юугаар туслах вэ?')]
 
 ############
 ### Main ###
 ############
 
 # Initialize
-with st.sidebar:
-    rails_dict = load_rails(username)
-    embedding = load_embedding()
-    vectorstore = load_vectorstore(username)
-    chat_history = load_chat_history(username)
-
+rails_dict = load_rails(username)
+embedding = load_embedding()
+vectorstore = load_vectorstore(username)
+chat_history = load_chat_history(username)
 # Options panel
-with st.sidebar:
-    # Chat history settings
-    disable_chat_history = st.toggle(lang_dict['disable_chat_history'])
-    top_k_history = st.slider(lang_dict['k_chat_history'], 1, 50, 5, disabled=disable_chat_history)
-    memory = load_memory(top_k_history if not disable_chat_history else 0)
-    delete_history = st.button(lang_dict['delete_chat_history_button'], disabled=disable_chat_history)
-    if delete_history:
-        with st.spinner(lang_dict['deleting_chat_history']):
-            memory.clear()
-    # Vector store settings
-    disable_vector_store = st.toggle(lang_dict['disable_vector_store'])
-    top_k_vectorstore = st.slider(lang_dict['top_k_vector_store'], 1, 150, 5, disabled=disable_vector_store)
-    strategy = st.selectbox(lang_dict['rag_strategy'], ('Basic Retrieval', 'Maximal Marginal Relevance', 'Fusion'),
-                            help=lang_dict['rag_strategy_help'], disabled=disable_vector_store)
 
-    custom_prompt_text = ''
-    custom_prompt_index = 0
-    try:
-        custom_prompt_text = open(f"""./customizations/prompt/{username}.txt""").read()
-        custom_prompt_index = 2
-    except:
-        custom_prompt_text = open(f"""./customizations/prompt/default.txt""").read()
-        custom_prompt_index = 0
+memory = load_memory(0)
 
-    prompt_type = st.selectbox(lang_dict['system_prompt'], ('Short results', 'Extended results', 'Custom'),
-                               index=custom_prompt_index)
-    custom_prompt = st.text_area(lang_dict['custom_prompt'], custom_prompt_text, help=lang_dict['custom_prompt_help'],
-                                 disabled=(prompt_type != 'Custom'))
-    print(f"""{disable_vector_store}, {top_k_history}, {top_k_vectorstore}, {strategy}, {prompt_type}""")
-
-with st.sidebar:
-    st.divider()
-
-# Include the upload form for new data to be Vectorized
-with st.sidebar:
-    uploaded_files = st.file_uploader(lang_dict['load_context'], type=['txt', 'pdf', 'csv'], accept_multiple_files=True)
-    upload = st.button(lang_dict['load_context_button'])
-    if upload and uploaded_files:
-        vectorize_text(uploaded_files)
-
-# Include the upload form for URLs be Vectorized
-with st.sidebar:
-    urls = st.text_area(lang_dict['load_from_urls'], help=lang_dict['load_from_urls_help'])
-    urls = urls.split(',')
-    upload = st.button(lang_dict['load_from_urls_button'])
-    if upload and urls:
-        vectorize_url(urls)
-
-# Drop the vector data and start from scratch
-if (username in st.secrets['delete_option'] and st.secrets.delete_option[username] == 'True'):
-    with st.sidebar:
-        st.caption(lang_dict['delete_context'])
-        submitted = st.button(lang_dict['delete_context_button'])
-        if submitted:
-            with st.spinner(lang_dict['deleting_context']):
-                vectorstore.clear()
-                memory.clear()
-
-with st.sidebar:
-    st.divider()
+disable_vector_store = False
+top_k_vectorstore = 1
+strategy = 'Basic Retrieval'
+custom_prompt_text = ''
+prompt_type = 'Short results'
 
 # Draw all messages, both user and agent so far (every time the app reruns)
 for message in st.session_state.messages:
     st.chat_message(message.type).markdown(message.content)
 
 # Now get a prompt from a user
-question = st.chat_input('Асуултаа бичнэ үү')
+question = st.chat_input('Асуултаа бичнэ үү!!!')
 
 if question:
     print(f"Got question: {question}")
-
     # Add the prompt to messages, stored in session state
     st.session_state.messages.append(HumanMessage(content=question))
-
     # Draw the prompt on the page
     print(f"Draw prompt")
     with st.chat_message('human'):
         st.markdown(question)
-
     # Get model, retriever
     model = load_model()
     retriever = load_retriever(top_k_vectorstore)
-
     # RAG Strategy
     content = ''
     fusion_queries = []
@@ -480,7 +458,7 @@ if question:
 *{lang_dict['using_fusion_queries']}*  
 """
             for fq in fusion_queries:
-                content += f"""📙 :orange[{fq}]  
+                content += f"""📙
     """
             # Write the generated fusion queries
             with st.chat_message('assistant'):
@@ -540,14 +518,8 @@ if question:
             source = doc.metadata['source']
             page_content = doc.page_content
             if source not in sources:
-                content += f"""📙 :orange[{os.path.basename(os.path.normpath(source))}]  
-"""
                 sources.append(source)
         # Write the history used
-        if disable_chat_history:
-            content += f"""
-"""
-        else:
             content += f"""
 """
         # Write the final answer without the cursor
